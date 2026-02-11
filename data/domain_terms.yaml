@@ -1,0 +1,267 @@
+# Seat Management (SIT) – Domain Terminology & Context
+# -----------------------------------------------------
+# Each key represents an Amadeus-specific term, message, or concept.
+# Fields:
+# - title: Human-readable title
+# - category: Functional | Technical | Framework | Messaging | Configuration | Concept
+# - summary: One-line overview
+# - description: Multi-line explanation of purpose, behavior, and dependencies
+# - usage: Practical context and interaction within Seat Management
+# - notes: Optional constraints, exceptions, or special remarks
+
+PCV:
+  title: "Process Customer Value"
+  category: "Functional Concept"
+  summary: "Airline-specific metric used to assess and prioritize customers based on configurable business criteria."
+  description: |-
+    PCV (Process Customer Value) is a product used by airlines to assess and prioritize customers based on various functional and operational criteria. It assigns a numeric or categorical value representing the customer’s relative importance in business processes such as waitlist confirmation, seat allocation, and early boarding.
+
+    **Purpose:**
+    - Provide a consistent and configurable measure of customer value.
+    - Enable differentiated service levels based on loyalty, fare class, or operational context.
+    - Drive automated prioritization logic in workflows like upgrade allocation and disruption handling.
+
+    **Determination:**
+    - The PCV value is calculated based on rules defined by each airline.
+    - Inputs include customer profile data and contextual information provided by the calling application.
+  usage: |-
+    - Used by Seat Management and other backend systems for priority-based decisions.
+    - Integrated with allocation, boarding, and operational flows.
+  notes: |-
+    PCV computation logic is airline-specific and may be extended through configuration or rule frameworks such as ABR.
+
+OTF:
+  title: "Open Transaction Framework"
+  category: "Framework"
+  summary: "Middleware framework developed by Amadeus to facilitate communication and transaction management across distributed systems."
+  description: |-
+    The Open Transaction Framework (OTF) is a middleware framework developed by Amadeus. It facilitates the development of both frontend and backend applications, primarily written in C++. OTF is part of Amadeus’ Open Backend ecosystem and is responsible for managing transactions and communications between systems and applications.
+
+    **Key Features:**
+    - Request Routing: Routes and relays requests between clients and servers.
+    - Service Scheduling: Manages service execution and scheduling.
+    - Transaction Processing: Handles and monitors transactional workflows.
+    - Queuing Mechanism: Implements request queuing for asynchronous operations.
+    - Failure Recovery: Provides failover and recovery mechanisms.
+    - Event Mechanism: Supports event-driven processes.
+    - Load Balancing: Balances load across node-local backends.
+    - Context Affinity: Maintains conversation and session context affinity.
+  usage: |-
+    - Used across multiple Amadeus backend applications such as Master Pricer, Flex Pricer, and Seat Management modules.
+    - Provides the runtime environment for service-oriented and event-driven processing.
+    - Enables reliable inter-process communication and backend transaction consistency.
+  notes: |-
+    OTF applications are primarily developed in C++.
+    It is a core component of the Open Backend world at Amadeus.
+    Provides standardized APIs for developers building distributed transactional systems.
+
+OTF_Variables:
+  title: "OTF Variables"
+  category: "Configuration"
+  summary: "Configuration variables controlling feature activation, environment behavior, and runtime configuration in OTF-based systems."
+  description: |-
+    OTF variables are configuration elements used in Amadeus systems to control the activation and deactivation of features across environments and backends. They act similarly to environment variables in Unix systems but are tailored for the Open Transaction Framework (OTF) runtime.
+
+    **Purpose and Function:**
+    - Manage feature toggles, code protection, and runtime configuration.
+    - Enable or disable functionalities dynamically across environments.
+    - Control application-level or backend-level parameters.
+    - Facilitate fast response to operational needs, such as activating fixes or toggling features.
+  usage: |-
+    - Defined and managed using internal Amadeus tools such as OVIA and ORCA.
+    - Can be modified dynamically using administrative commands.
+    - Typically bundled within release packages and synchronized across environments (DEV, UAT, PRD).
+  notes: |-
+    Avoid introducing new OTF variables outside official load cycles, as they may be removed during subsequent releases.
+    Mismanagement can impact system stability or feature consistency.
+    Commonly used for urgent configuration changes, cloud migration enablement, or payment feature activation.
+  examples:
+    - "SIT_FIX_16192324_SKIP_REBUILD_FOR_FREE_FLOW"
+    - "SIT_WN_HARDCODED_SUITABILITY_RULE"
+    - "SIT_FIX_31281886_SETS_BREAK_ACCOMPANYING"
+    - "SIT_FLD_COMPO_USE_REQUESTED_IMAGE_ONLY"
+    - "SIT_CR23200622_STORE_FLD_DATA"
+    - "SIT_FLD_COMPO_NOTIF_STATUS_READY_REMOVAL"
+
+ABR:
+  title: "Amadeus Business Rules"
+  category: "Functional Framework"
+  summary: "Rule-based functional framework for defining and customizing airline business processes."
+  description: |-
+    ABR allows business rules to be defined independent of code, enabling flexible customization of processes per airline.
+    It supports both graphical and source-based interfaces, improving maintainability and agility in response to business changes.
+  usage: |-
+    - Defines logic for seat pricing, eligibility, reallocation, and override handling.
+    - Integrated within STM and STE modules for functional control.
+  notes: |-
+    Rules are evaluated dynamically; deployment changes can alter runtime behavior without rebuilding code.
+
+
+EDIFACT:
+  title: "Electronic Data Interchange for Administration, Commerce, and Transport"
+  category: "Messaging Standard"
+  summary: "An ISO 9735 international standard defining structured, machine-readable messages for business communication across systems."
+  description: |-
+    The EDIFACT (Electronic Data Interchange for Administration, Commerce, and Transport) standard enables structured and automated exchange of business transactions between heterogeneous systems.
+
+    Within the **Seat Management (SIT)** ecosystem, EDIFACT defines message formats for operations such as seat allocation, display, reseating, rebuild, and synchronization. Each message follows a strict structure composed of interchanges, segments, composites, and data elements separated by standardized delimiters.
+
+    **Key Characteristics:**
+    - Provides interoperability between systems like RES, DCS, and GDS.
+    - Ensures compact, consistent, and machine-readable communication.
+    - Supports large-scale, high-frequency operational exchanges.
+
+  usage: |-
+    - Used in seatmap-related flows: e.g., **SRBRCQ** (Reseating Build Request), **SMPREQ** (Seatmap Pricing Request), **SPAXRQ** (Seat Allocation Request).
+    - Enables communication between upstream (STE/RES) and backend systems (STM, DBA).
+    - Serves as the transport format for both synchronous and asynchronous flows.
+
+  notes: |-
+    **Segment Separators:**
+    - Data element separator: "+"
+    - Component separator: ":"
+    - Segment terminator: "'"
+
+  naming_convention: |-
+    **EDIFACT Message Naming Convention (Amadeus Format)**  
+    Messages use a six-character format that encodes their purpose and domain:
+
+    **Pattern:** `XYYYZW`
+
+    - **X:** Domain or business area  
+      - P = PNR / Reservation  
+      - I = Inventory  
+      - T = Ticketing / Pricing  
+      - S = Seating  
+      - F = Fares / SSP  
+      - C = DCS / CM  
+
+    - **YYY:** Functional abbreviation — represents the feature or action type.  
+    - **Z:** Operation type — defines the intent of the message.  
+      - U = Update  
+      - A = Add  
+      - D = Delete  
+
+    - **W:** Message nature — defines how it’s used.  
+      - Q = Query  
+      - R = Response  
+      - S = Standalone Feed  
+
+    **Example:**  
+    `SEOTUQ`  
+    - **S** → Seating domain  
+    - **EOT** → Functional abbreviation  
+    - **U** → Update  
+    - **Q** → Query  
+
+  segments: |-
+    **Common EDIFACT Message Segments**
+
+    - **UNB (Interchange Header):**  
+      Identifies sender, receiver, date/time, and control reference.  
+      Example: `UNB+IATB:1+1A0SI+1ASRNIP+250218:0713+0VCOC0E6M70001+++O'`
+
+    - **UNH (Message Header):**  
+      Identifies the message type and version.  
+      Example: `UNH+1+TIPNRQ:08:1:1A+00020V96216O6S'`
+
+    - **DCX (Amadeus-specific Segment):**  
+      Carries contextual data such as pricing qualifiers, channel info, or operational flags.  
+      Example: `<UKEY VAL="8X1TZNV4XRWZ0WUG0T65P0YZ60" TRXNB="2"/><OFFICEID VALUE="TYOJA2238"/><AREACODE VALUE="A"/>`
+
+    - **UNT (Message Trailer):**  
+      Indicates the number of segments and repeats the message reference.  
+      Example: `UNT+6+1'`
+
+    - **UNZ (Interchange Trailer):**  
+      Closes the message envelope.  
+      Example: `UNZ+1+12345'`
+
+    - **MSG (Message Content):**  
+      Contains the main business data (e.g., pricing, allocation, or seatmap details).  
+
+    Together, these segments define the structural backbone of EDIFACT-based messages used in airline and travel systems for reliable, high-volume data exchange.
+
+COM_Parameters:
+  title: "Configuration Parameters (COM)"
+  category: "Configuration"
+  summary: "Defines airline-specific feature toggles and business rule activations."
+  description: |-
+    COM parameters allow the same core codebase to behave differently for each airline.
+    They determine which functionalities are active or disabled based on airline-defined settings.
+    Initially managed in airlineParams.xml, the system has evolved to database-managed parameters.
+  usage: |-
+    - Control feature activation for airlines (e.g., FBS_ENABLE, SEAT_PREF_ACTIVE).
+    - Used by STM, STE, and DFR modules to drive business logic dynamically.
+  notes: |-
+    Adding a new COM parameter is backward compatible; existing components do not need recompilation.
+  examples:
+    - "stm_enable_seating"
+    - "stm_enable_train_seatmap"
+    - "stm_enable_type_of_management"
+    - "stm_ensure_seat-adjacency"
+    - "stm_fare_family"
+    - "stm_fbb_features_order"
+    - "stm_fbs_features_order"
+    - "stm_fbs_with_least_char"
+    - "stm_get_rich_media"
+    - "stm_gha_settings"
+    - "stm_ideal_config_selection"
+
+LQS_GQS:
+  title: "Local Queuing Server (LQS) and Global Queuing Server (GQS)"
+  category: "Framework"
+  summary: "Internal queuing frameworks for managing asynchronous and offline message traffic between applications."
+  description: |-
+    LQS (Local Queuing Server) and GQS (Global Queuing Server) are queuing frameworks used within Amadeus applications to handle asynchronous and offline traffic. They ensure guaranteed delivery and orderly processing of events between distributed systems.
+
+    **Purpose:**
+    - Manage asynchronous and offline message delivery across internal applications.
+    - Enable event queuing, storage, and later retrieval to ensure message reliability.
+    - Facilitate decoupling of producer and consumer applications in distributed environments.
+
+    **Technical Details:**
+    - Both LQS and GQS are developed in C++ and use Oracle as the persistence layer.
+    - They are designed for internal messaging only, with queue configurations stored in Oracle databases.
+    - LQS operates at the local (application-level) scope, while GQS handles global or cross-application message queuing.
+  usage: |-
+    - Used across backends such as STM, STE, and FMT to process asynchronous messages and offline flows.
+    - Ensures resilience during peak load, deferred message handling, and guaranteed delivery in recovery scenarios.
+  notes: |-
+    Both frameworks are critical for ensuring system stability and reliability in distributed Amadeus environments.
+
+SI:
+  title: "Services Integrator (SI)"
+  category: "Framework"
+  summary: "Core integration component providing a unified entry point and service orchestration across Amadeus applications."
+  description: |-
+    SI (Services Integrator) is a middleware component in the Amadeus architecture designed to manage, integrate, and orchestrate services across distributed applications. It forms the backbone of the Amadeus Service-Oriented Architecture (SOA).
+
+    **Purpose:**
+    - Acts as a single entry point into the Amadeus system, abstracting topology complexity from clients.
+    - Integrates all Amadeus services via a unified SOA-based enterprise bus.
+    - Ensures scalability, high availability, and efficient routing of service requests.
+
+    **Technical Details:**
+    - Provides service discovery, routing, and load balancing across multiple backend nodes.
+    - Manages protocol translation and message mediation between diverse services.
+    - Supports continuous scalability and availability to handle growing traffic demands.
+  usage: |-
+    - Used to interconnect STM, STE, FMT, and DFR components with other Amadeus core systems.
+    - Facilitates service communication between applications while maintaining consistent access control and monitoring.
+  notes: |-
+    A core part of the Open Backend ecosystem enabling transparent service integration and scalability across Amadeus applications.
+ 
+Acronyms:
+  - key: "SSR"
+    expansion: "Special Service Request"
+  - key: "FBS"
+    expansion: "Find Best Seat"
+  - key: "DCS"
+    expansion: "Departure Control System"
+  - key: "ACV"
+    expansion: "Aircraft Configuration Version"
+  - key: "DFR"
+    expansion: "Discrepancy Framework for Reservation window"
+  - key: "DFD"
+    expansion: "Discrepancy Framework for Departure window"

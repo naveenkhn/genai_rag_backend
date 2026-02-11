@@ -1,0 +1,134 @@
+edifact_msg_flow:
+  title: "EDIFACT Message Processing Flow (Generic)"
+  intent: |
+    Defines the canonical processing sequence across the Seating (SIT) ecosystem — covering STM, STE, FMT, and seatmap_distrib repositories —
+    for handling EDIFACT-based requests such as SPAXAQ → SPAXAR. This represents the standardized runtime behavior for all seating-related flows,
+    including seatmap display, allocation, reseating, rebuild, and synchronization. It describes how functional and code layers interact consistently
+    across the SIT stack to process, persist, and respond to EDIFACT messages.
+  trigger: "Reception of a valid EDIFACT message routed from upstream (typically STE/RES/DCS)."
+  preconditions:
+    - "Routing and transport completed via SI/STE or equivalent."
+    - "EDIFACT syntax validated (segment structure, delimiters)."
+  inputs:
+    - "Inbound EDIFACT message (e.g., SPAXAQ, SMPREQ, SRBRCQ)."
+    - "Invocation context (flight, passenger, transaction identifiers)."
+  outputs:
+    - "Outbound EDIFACT message (e.g., SPAXAR / SMPRES / SRBRSQ)."
+    - "Updated database state (seatmap, configuration, history) if required."
+
+  runtime_context:
+    - "COM parameters and OTF variables fetched dynamically at runtime."
+    - "They influence algorithmic decisions, tailoring rules, and activation of functional paths."
+    - "Examples: FBS_ENABLE, ADJACENCY_LOGIC_ACTIVE, CLOUD_MIGRATION_FLAG."
+
+  flow:
+    - step: "Entry (Ent* / Entry<MsgType>)"
+      purpose: |
+        Receive the structured request, initialize context, and select or chain the appropriate Cmd* classes
+        based on action codes or flags. Entry acts as the orchestrator of message execution.
+      examples:
+        - "EntrySPAXAQ.cpp / EntrySPAXAQ.hpp"
+        - "EntrySRBRCQ.cpp / EntrySRBRCQ.hpp"
+      io: |
+        Input: routed EDIFACT structure.
+        Output: initialized MSI container; planned Cmd* execution path.
+      notes: |
+        Entry can trigger multiple commands (allocation, tailoring, rebuild).
+        Delegates parsing to MSI and execution to Cmd* layers.
+
+    - step: "MSI (MsiMsg<MsgType>)"
+      purpose: |
+        Decode, validate, and map inbound EDIFACT message segments into a typed in-memory MSI container.
+        Provides normalized message data for Factory and Command layers.
+      examples:
+        - "MsiMsgSPAXAQ.cpp / MsiMsgSPAXAQ.hpp"
+        - "MsiMsgSMPREQ.cpp / MsiMsgSMPREQ.hpp"
+      io: |
+        Input: structured EDIFACT request.
+        Output: MSI container (fields, segments, and message metadata).
+      notes: |
+        MSI performs no business logic; its sole function is parsing and mapping.
+
+    - step: "Factory → BOM"
+      purpose: |
+        Construct and hydrate Business Object Model (BOM) instances from MSI and database data.
+        Represents the authoritative in-memory state of the current request.
+      examples:
+        - "FactorySeatmap.cpp / FactorySeatmap.hpp"
+        - "LegDateTemplate.cpp / MasterSeatmapItem.cpp"
+      io: |
+        Input: MSI data + DB results.
+        Output: populated BOM objects linked via Factory relationships.
+      notes: |
+        Factory manages domain object creation and ownership (e.g., seatmap, compartment, ACV/PCV data).
+
+    - step: "Command (Cmd*)"
+      purpose: |
+        Execute business logic and orchestrate the workflow. Each command mutates BOM, performs DB I/O,
+        and applies seat allocation, tailoring, or rebuild algorithms.
+      examples:
+        - "CmdRetrieveSeatmap.cpp / CmdRetrieveSeatmap.hpp"
+        - "CmdTailorSeatmap.cpp / CmdTailorSeatmap.hpp"
+        - "CmdShuffleManager.cpp / CmdShuffleManager.hpp"
+      io: |
+        Input: hydrated BOM + MSI context.
+        Output: updated BOM; DB transactions completed.
+      notes: |
+        Commands can invoke other commands; COM/OTF fetched here to toggle rules or behaviors.
+
+    - step: "Database (Dba* / DbRequest*)"
+      purpose: |
+        Provide typed accessors and generated queries to read or persist seatmap data, configurations, or templates.
+      examples:
+        - "DbaMasterSeatmap.cpp / DbaMasterSeatmap.hpp"
+        - "DbaLegDateTemplate.cpp / DbaCharacteristic.cpp"
+        - "DbRequestSeatTemplate.cpp"
+      io: |
+        Input: command-level read/write operations.
+        Output: hydrated domain data or persisted changes.
+      notes: |
+        DB adaptors convert SQL result sets into domain structures for BOM/Factory.
+
+    - step: "BOI (Boi*)"
+      purpose: |
+        Translate BOM state into outbound logical structures that represent the response content.
+        Applies COM parameter logic, PCV/ACV enrichment, and final formatting preparation.
+      examples:
+        - "BoiSSRToolsLight.cpp / BoiSSRToolsLight.hpp"
+        - "BoiDCRSMF.cpp / BoiDCRSMF.hpp"
+      io: |
+        Input: finalized BOM.
+        Output: BOI data prepared for encoding.
+      notes: |
+        BOI ensures correct seating attributes, ACV rules, and airline parameter effects in output.
+
+    - step: "MSE (MseMsg<MsgType>)"
+      purpose: |
+        Serialize BOI/domain data into the outbound EDIFACT message (e.g., SPAXAR).
+        Apply segment formatting, delimiters, and message header population.
+      examples:
+        - "MseMsgSPAXAR.cpp / MseMsgSPAXAR.hpp"
+        - "MseMsgSSMFRR.cpp / MseMsgSSMFRR.hpp"
+      io: |
+        Input: BOI data structures.
+        Output: serialized EDIFACT-compliant response.
+      notes: |
+        MSE handles construction of UNH/UNT segments and prepares final message payload.
+
+    - step: "Response Dispatch (Entry → Upstream)"
+      purpose: |
+        Return encoded response to upstream (STE/RES) and perform logging and telemetry recording.
+      examples:
+        - "EntrySPAXAQ.cpp"
+      io: |
+        Input: serialized EDIFACT response.
+        Output: transmitted SPAXAR (or equivalent) message + logs.
+      notes: |
+        Marks completion of synchronous STM execution.
+
+  cross_cutting:
+    - "Applicable to: stm_main, ste, fmt, seatmap_distrib."
+    - "Not applicable to: dfr, dfd, dba (non-EDIFACT, internal tooling)."
+    - "COM parameters and OTF variables are runtime lookups, not message content."
+    - "Asynchronous variants (via LQS/GQS) use the same logic but with queued dispatch."
+    - "Errors are mapped to message-specific error segments before encoding."
