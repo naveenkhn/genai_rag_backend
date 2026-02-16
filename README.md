@@ -92,6 +92,9 @@ Main orchestration is in `pipeline/rag_pipeline.py`:
 
 ## Environment Variables
 
+.env reference:
+- `.env.example` is provided as a reference template with dummy values.
+
 Required (core RAG path):
 - `AZURE_SEARCH_ENDPOINT`
 - `AZURE_SEARCH_API_KEY`
